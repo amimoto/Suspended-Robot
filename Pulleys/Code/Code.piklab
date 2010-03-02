@@ -1,0 +1,13 @@
+<!DOCTYPE piklab>
+<piklab>
+  <general>
+    <device>16F628A</device>
+    <tool>sdcc</tool>
+    <opened_files>
+      <item>Code.c</item>
+    </opened_files>
+    <files>
+      <item>Code.c</item>
+    </files>
+  </general>
+</piklab>
