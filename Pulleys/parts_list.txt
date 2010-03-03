@@ -1,1 +1,13 @@
-PIC16F628A
+PIC16F628A, 20, $35.99 USD
+Stepper Motor Controller, 4, $100.00 USD
+10MHz Crystal Oscillators, 20, $4.50 USD
+0832 LED Dot Matrix Red Display Information Board, 1, $9.99 USD
+LM1117T LM1117 Low Dropout Voltage Regulator , 5, $5.00 USD
+TROLLING WIRE Stainless Steel 50lb/600Ft, 1, $37.54 USD
+HARD DISK CD DVD DRIVE 12V + 5V AC Adapter Power Supply, 5, $12.45 USD
+14AWG Power Cord Cable w/ 3 conductor PC power connector socket, 5, $3.40 USD
+Molex (5.25 Male) / (3.5 Female) Int. DC Power Cable - 6 Inch, 5, $2.95
+2.4G Wireless nRF24L01+ Transceiver Module YC-NNC+ 280417672279, 4, $41.98 USD
+4 Stepper motors - DIY CNC ROUTER MILL LATHE ROBOT, 4, $31.45 USD
+
+
