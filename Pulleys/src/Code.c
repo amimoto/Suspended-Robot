@@ -32,6 +32,7 @@ void serial_init () {
 // The serial code setup and base calculations were stolen from
 // http://burningsmell.org/pic16f628/src/0004-uart_tx.c
 // Thanks! :)
+//
     TRISB|=TX_BIT|RX_BIT;   // These need to be 1 for USART to work
     SPBRG=SPBRG_VALUE;      // Baud Rate register, calculated by macro
     BRGH=1;
@@ -130,7 +131,7 @@ void led_off () {
 #define SPI_MOSI   0x01
 #define SPI_MISO   0x02
 #define SPI_CLK    0x04
-#define SPI_SPEED  1000
+#define SPI_SPEED  2
 
 void spi_init () {
 // -----------------------------------------------------
@@ -412,10 +413,14 @@ void main() {
 // Get the data from the chip...
             nrf_chip_deselect();
             spi_txrx( NRF_R_RX_PAYLOAD );
-            spi_txrx( NRF_NOP );
-            spi_txrx( NRF_NOP );
-            spi_txrx( NRF_NOP );
-            spi_txrx( NRF_NOP );
+            status = spi_txrx( NRF_NOP );
+            printbytehex(status);putchar(' ');
+            status = spi_txrx( NRF_NOP );
+            printbytehex(status);putchar(' ');
+            status = spi_txrx( NRF_NOP );
+            printbytehex(status);putchar(' ');
+            status = spi_txrx( NRF_NOP );
+            printbytehex(status);putchar(' ');
             nrf_chip_select();
 
 // Enable comm with SPI device
