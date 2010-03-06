@@ -6,26 +6,94 @@
 typedef unsigned int word;
 word at 0x2007 CONFIG = _WDT_OFF & _PWRTE_OFF & _HS_OSC & _MCLRE_OFF & _BOREN_OFF & _LVP_OFF & _DATA_CP_OFF & _CP_OFF;
 
-void isr() interrupt 0 {                                                                                                  
-    /* interrupt service routine */
-    /* << insert interrupt code >> */
-}
-
 /**************************************************************
  **** MISC ROUTINES
  **************************************************************/
 
-#define LED_BIT 0x10
+#define LED_BIT     0x10
 
-#define KHZ 10000
-#define TX_PORT 2
-#define RX_PORT 1
-#define TX_BIT  (1<<TX_PORT)
-#define RX_BIT  (1<<RX_PORT)
+#define KHZ         10000
+#define TX_PORT     2
+#define RX_PORT     1
+#define TX_BIT      (1<<TX_PORT)
+#define RX_BIT      (1<<RX_PORT)
 
-#define BAUD    9600
+#define BAUD        9600
 #define BAUD_FACTOR (16L*BAUD)
 #define SPBRG_VALUE (unsigned char)(((KHZ*1000L)-BAUD_FACTOR)/BAUD_FACTOR)
+
+#define MOTOR_CLOCK_BIT          3
+#define MOTOR_CLOCK_PULSE_CYCLES 5
+
+volatile unsigned int timer_counter        = 0;
+volatile unsigned int timer_rollover_point = 0;
+
+void isr() interrupt 0 {
+// --------------------------------------------------
+// The interrupt function that handles everything!
+// Currently, the main purpose is to handle the counter
+// heartbeat for the motor controller.
+//
+    timer_counter++;
+    if ( timer_rollover_point ) {
+        if ( time_counter >= time_rollover ) {
+            timer_counter = 0;
+            PORTB |= MOTOR_CLOCK_BIT;
+        }
+    }
+
+// We don't want to flash the clock too fast on the 
+// motor controller so we wait a certain number of cycles
+// before we turn it off
+    else if ( timer_counter == MOTOR_CLOCK_PULSE_CYCLES ) {
+        PORTB &= ~MOTOR_CLOCK_BIT;
+    }
+    T0IF  = 0;  // Clear the Timer 0 interrupt.
+}
+
+void isr_init () {
+// --------------------------------------------------
+// Setup the timer.
+//
+
+// Enable interrupts
+    GIE    = 1;
+    T0CS   = 0; // Clear to enable timer mode.
+    PSA    = 0; // Clear to assign prescaler to Timer 0.
+
+// Setup the prescalar to 1:16
+    PS2    = 0;
+    PS1    = 1;
+    PS0    = 1;
+ 
+ // Interrupt flags are gone!
+    INTCON = 0;
+
+    T0IE   = 1; // Enable TMR0 Overflow Interrupt bit
+//    TMR0   = 0; // Enable peripheral interrupts.
+
+}
+
+void motor_speed ( unsigned int rollover_point ) {
+// --------------------------------------------------
+// The number of cycles to spin before sending a
+// pulse to the motor controller's clock pin. The
+// smaller the number, the fast it will go, however,
+// the value "0" has the special purpose of simply
+// halting the motor
+//
+    timer_rollover_point = rollover_point;
+}
+
+#define MOTOR_WIND 1
+#define MOTOR_UNWIND 0
+void motor_direction ( unsigned char motor_direction ) {
+// --------------------------------------------------
+// Allows selection of whether or not the motor controller
+// should be winding or unwinding the reel
+//
+    timer_rollover_point = rollover_point;
+}
 
 void serial_init () {
 // --------------------------------------------------
@@ -313,7 +381,6 @@ void nrf_chip_deselect () {
     PORTA &= ~NRF_CS;
 }
 
-
 void nrf_config ( unsigned char config_key, unsigned char config_setting) {
 // --------------------------------------------------
 // Set the configuration of a single item in the nordic tranciever
@@ -379,22 +446,20 @@ unsigned char nrf_status () {
  **************************************************************/
 
 
+/**************************************************************
+ **** MAIN LOOP
+ **************************************************************/
 void main() {
+// --------------------------------------------------
     unsigned char status;
     unsigned int i;
     unsigned int iteration = 0;
     CMCON = 0x07; 
 
-// Let us know we're alive
+// Start the init
     serial_init();
-    led_init();
-    led_on();
-    for ( i = 0; i < 60000; i++ ) {
-        i += 10;
-        i -= 10;
-    };
+    isr_init();
     nrf_init();
-    led_off();
 
 // Now sit and wait for some response to come in.
     while (1) {
