@@ -22,79 +22,6 @@ word at 0x2007 CONFIG = _WDT_OFF & _PWRTE_OFF & _HS_OSC & _MCLRE_OFF & _BOREN_OF
 #define BAUD_FACTOR (16L*BAUD)
 #define SPBRG_VALUE (unsigned char)(((KHZ*1000L)-BAUD_FACTOR)/BAUD_FACTOR)
 
-#define MOTOR_CLOCK_BIT          3
-#define MOTOR_CLOCK_PULSE_CYCLES 5
-
-volatile unsigned int timer_counter        = 0;
-volatile unsigned int timer_rollover_point = 0;
-
-void isr() interrupt 0 {
-// --------------------------------------------------
-// The interrupt function that handles everything!
-// Currently, the main purpose is to handle the counter
-// heartbeat for the motor controller.
-//
-    timer_counter++;
-    if ( timer_rollover_point ) {
-        if ( time_counter >= time_rollover ) {
-            timer_counter = 0;
-            PORTB |= MOTOR_CLOCK_BIT;
-        }
-    }
-
-// We don't want to flash the clock too fast on the 
-// motor controller so we wait a certain number of cycles
-// before we turn it off
-    else if ( timer_counter == MOTOR_CLOCK_PULSE_CYCLES ) {
-        PORTB &= ~MOTOR_CLOCK_BIT;
-    }
-    T0IF  = 0;  // Clear the Timer 0 interrupt.
-}
-
-void isr_init () {
-// --------------------------------------------------
-// Setup the timer.
-//
-
-// Enable interrupts
-    GIE    = 1;
-    T0CS   = 0; // Clear to enable timer mode.
-    PSA    = 0; // Clear to assign prescaler to Timer 0.
-
-// Setup the prescalar to 1:16
-    PS2    = 0;
-    PS1    = 1;
-    PS0    = 1;
- 
- // Interrupt flags are gone!
-    INTCON = 0;
-
-    T0IE   = 1; // Enable TMR0 Overflow Interrupt bit
-//    TMR0   = 0; // Enable peripheral interrupts.
-
-}
-
-void motor_speed ( unsigned int rollover_point ) {
-// --------------------------------------------------
-// The number of cycles to spin before sending a
-// pulse to the motor controller's clock pin. The
-// smaller the number, the fast it will go, however,
-// the value "0" has the special purpose of simply
-// halting the motor
-//
-    timer_rollover_point = rollover_point;
-}
-
-#define MOTOR_WIND 1
-#define MOTOR_UNWIND 0
-void motor_direction ( unsigned char motor_direction ) {
-// --------------------------------------------------
-// Allows selection of whether or not the motor controller
-// should be winding or unwinding the reel
-//
-    timer_rollover_point = rollover_point;
-}
-
 void serial_init () {
 // --------------------------------------------------
 // The serial code setup and base calculations were stolen from
@@ -181,6 +108,91 @@ void led_off () {
 // Turn the durn led on!
 //
     PORTB &= ~LED_BIT;
+}
+
+#define MOTOR_CLOCK_BIT          0x10
+#define MOTOR_DIRECTION_BIT      0x20
+#define MOTOR_CLOCK_PULSE_CYCLES 20
+
+volatile unsigned int timer_counter        = 0;
+volatile unsigned int timer_rollover_point = 0;
+
+void isr() interrupt 0 {
+// --------------------------------------------------
+// The interrupt function that handles everything!
+// Currently, the main purpose is to handle the counter
+// heartbeat for the motor controller.
+//
+    T0IF  = 0;  // Clear the Timer 0 interrupt.
+    timer_counter++;
+    if ( timer_rollover_point ) {
+        if ( timer_counter >= timer_rollover_point ) {
+            timer_counter = 0;
+            PORTB |= MOTOR_CLOCK_BIT;
+        }
+    }
+
+// We don't want to flash the clock too fast on the 
+// motor controller so we wait a certain number of cycles
+// before we turn it off
+    if ( timer_counter == MOTOR_CLOCK_PULSE_CYCLES ) {
+        PORTB &= ~MOTOR_CLOCK_BIT;
+        putchar('-');
+        putchar('-');
+        putchar('-');
+        putchar('-');
+        putchar('-');
+        putchar('-');
+        putchar('\r');
+        putchar('\n');
+    }
+
+    printint( timer_counter );
+    putchar('\r');
+    putchar('\n');
+}
+
+void isr_init () {
+// --------------------------------------------------
+// Setup the timer.
+//
+    TRISB &= ~( MOTOR_CLOCK_BIT | MOTOR_DIRECTION_BIT );
+
+// Enable interrupts
+    T0CS   = 0; // Clear to enable timer mode.
+    PSA    = 0; // Clear to assign prescaler to Timer 0.
+
+// Setup the prescalar to 1:16
+    PS2    = 0;
+    PS1    = 1;
+    PS0    = 1;
+ 
+ // Interrupt flags are gone!
+    INTCON = 0;
+    GIE    = 1;
+
+    T0IE   = 1; // Enable TMR0 Overflow Interrupt bit
+    TMR0   = 0; // Enable peripheral interrupts.
+}
+
+void motor_speed ( unsigned int rollover_point ) {
+// --------------------------------------------------
+// The number of cycles to spin before sending a
+// pulse to the motor controller's clock pin. The
+// smaller the number, the fast it will go, however,
+// the value "0" has the special purpose of simply
+// halting the motor
+//
+    timer_rollover_point = rollover_point;
+}
+
+#define MOTOR_WIND 1
+#define MOTOR_UNWIND 0
+void motor_direction ( unsigned char motor_dir ) {
+// --------------------------------------------------
+// Allows selection of whether or not the motor controller
+// should be winding or unwinding the reel
+//
 }
 
 /**************************************************************
@@ -449,6 +461,7 @@ unsigned char nrf_status () {
 /**************************************************************
  **** MAIN LOOP
  **************************************************************/
+
 void main() {
 // --------------------------------------------------
     unsigned char status;
@@ -460,6 +473,7 @@ void main() {
     serial_init();
     isr_init();
     nrf_init();
+    motor_speed(50);
 
 // Now sit and wait for some response to come in.
     while (1) {
